@@ -1,11 +1,8 @@
-#include <iostream>
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-using namespace std;
 
 #define MAXLINE 1000
 #define DEBUG 0
@@ -25,6 +22,7 @@ int main(int argc, char** argv){
 
 	char input[MAXLINE];
 	char** tokens;
+	int status;
 	
 	while(1) { 
 		printf("$ "); // The prompt
@@ -38,9 +36,9 @@ int main(int argc, char** argv){
 		}
 
 		// Calling the tokenizer function on the input line    
-		tokens = tokenize(input);
+		tokens = tokenize(input);	
 		// Executing the command parsed by the tokenizer
-		execute_command(tokens) ; 
+		status = execute_command(tokens) ; 
 		
 		// Freeing the allocated memory	
 		int i ;
@@ -98,15 +96,6 @@ char ** tokenize(char* input){
 	}
 
 	tokens[tokenNo] = NULL ;
-
-	/* Just printing tokens here */
-	cout<<"Here are the tokens: "<<endl;
-	for(int i=0; i<tokenNo; i++){
-		cout<<tokens[i]<<" ";
-	}
-	cout<<endl;
-	/* ends here */
-
 	return tokens;
 }
 
@@ -117,12 +106,14 @@ int execute_command(char** tokens) {
 	Returns 0 on success, -1 on failure. 
 	*/
 	if (tokens == NULL) {
-		return -1 ; 				// Null Command
+		// Null Command
+		return -1 ; 				
 	} else if (tokens[0] == NULL) {
-		return 0 ;					// Empty Command
+		// Empty Command
+		return 0 ;					
 	} else if (!strcmp(tokens[0],"exit")) {
 		/* Quit the running process */
-		return 0 ;
+		exit(0);
 	} else if (!strcmp(tokens[0],"cd")) {
 		/* Change Directory, or print error on failure */
 		return 0 ;
