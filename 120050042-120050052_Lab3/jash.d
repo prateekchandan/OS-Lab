@@ -1,20 +1,25 @@
-jash.o: jash.cpp /usr/include/stdc-predef.h /usr/include/c++/4.8/iostream \
- /usr/include/x86_64-linux-gnu/c++/4.8/bits/c++config.h \
- /usr/include/x86_64-linux-gnu/c++/4.8/bits/os_defines.h \
+jash.o: jash.cpp /usr/include/stdc-predef.h /usr/include/stdio.h \
  /usr/include/features.h /usr/include/x86_64-linux-gnu/sys/cdefs.h \
  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
  /usr/include/x86_64-linux-gnu/gnu/stubs.h \
  /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
+ /usr/lib/gcc/x86_64-linux-gnu/4.8/include/stddef.h \
+ /usr/include/x86_64-linux-gnu/bits/types.h \
+ /usr/include/x86_64-linux-gnu/bits/typesizes.h /usr/include/libio.h \
+ /usr/include/_G_config.h /usr/include/wchar.h \
+ /usr/lib/gcc/x86_64-linux-gnu/4.8/include/stdarg.h \
+ /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
+ /usr/include/x86_64-linux-gnu/bits/sys_errlist.h \
+ /usr/include/c++/4.8/iostream \
+ /usr/include/x86_64-linux-gnu/c++/4.8/bits/c++config.h \
+ /usr/include/x86_64-linux-gnu/c++/4.8/bits/os_defines.h \
  /usr/include/x86_64-linux-gnu/c++/4.8/bits/cpu_defines.h \
  /usr/include/c++/4.8/ostream /usr/include/c++/4.8/ios \
  /usr/include/c++/4.8/iosfwd /usr/include/c++/4.8/bits/stringfwd.h \
  /usr/include/c++/4.8/bits/memoryfwd.h \
  /usr/include/c++/4.8/bits/postypes.h /usr/include/c++/4.8/cwchar \
- /usr/include/wchar.h /usr/include/stdio.h \
- /usr/lib/gcc/x86_64-linux-gnu/4.8/include/stdarg.h \
- /usr/include/x86_64-linux-gnu/bits/wchar.h \
- /usr/lib/gcc/x86_64-linux-gnu/4.8/include/stddef.h \
- /usr/include/xlocale.h /usr/include/c++/4.8/exception \
+ /usr/include/x86_64-linux-gnu/bits/wchar.h /usr/include/xlocale.h \
+ /usr/include/c++/4.8/exception \
  /usr/include/c++/4.8/bits/atomic_lockfree_defines.h \
  /usr/include/c++/4.8/bits/char_traits.h \
  /usr/include/c++/4.8/bits/stl_algobase.h \
@@ -33,8 +38,7 @@ jash.o: jash.cpp /usr/include/stdc-predef.h /usr/include/c++/4.8/iostream \
  /usr/include/x86_64-linux-gnu/c++/4.8/bits/c++locale.h \
  /usr/include/c++/4.8/clocale /usr/include/locale.h \
  /usr/include/x86_64-linux-gnu/bits/locale.h /usr/include/c++/4.8/cctype \
- /usr/include/ctype.h /usr/include/x86_64-linux-gnu/bits/types.h \
- /usr/include/x86_64-linux-gnu/bits/typesizes.h /usr/include/endian.h \
+ /usr/include/ctype.h /usr/include/endian.h \
  /usr/include/x86_64-linux-gnu/bits/endian.h \
  /usr/include/x86_64-linux-gnu/bits/byteswap.h \
  /usr/include/x86_64-linux-gnu/bits/byteswap-16.h \
@@ -71,14 +75,14 @@ jash.o: jash.cpp /usr/include/stdc-predef.h /usr/include/c++/4.8/iostream \
  /usr/include/c++/4.8/bits/locale_facets.tcc \
  /usr/include/c++/4.8/bits/basic_ios.tcc \
  /usr/include/c++/4.8/bits/ostream.tcc /usr/include/c++/4.8/istream \
- /usr/include/c++/4.8/bits/istream.tcc /usr/include/unistd.h \
- /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
+ /usr/include/c++/4.8/bits/istream.tcc /usr/include/errno.h \
+ /usr/include/x86_64-linux-gnu/bits/errno.h /usr/include/linux/errno.h \
+ /usr/include/x86_64-linux-gnu/asm/errno.h \
+ /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
+ /usr/include/unistd.h /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
  /usr/include/x86_64-linux-gnu/bits/environments.h \
  /usr/include/x86_64-linux-gnu/bits/confname.h /usr/include/getopt.h \
- /usr/include/libio.h /usr/include/_G_config.h \
- /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
- /usr/include/x86_64-linux-gnu/bits/sys_errlist.h /usr/include/stdlib.h \
- /usr/include/x86_64-linux-gnu/bits/waitflags.h \
+ /usr/include/stdlib.h /usr/include/x86_64-linux-gnu/bits/waitflags.h \
  /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
  /usr/include/x86_64-linux-gnu/sys/types.h \
  /usr/include/x86_64-linux-gnu/sys/select.h \

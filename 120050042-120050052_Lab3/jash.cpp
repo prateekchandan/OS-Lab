@@ -1,8 +1,11 @@
 #include <stdio.h>
+#include <iostream>
+#include <errno.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <unistd.h>
+using namespace std;
 
 #define MAXLINE 1000
 #define DEBUG 0
@@ -11,14 +14,15 @@
 int parent_pid ;
 char ** tokenize(char*) ;
 int execute_command(char** tokens) ;
+void quit(int signum);
 
 int main(int argc, char** argv){
 	parent_pid = getpid() ;
 	
 	/* Set (and define) appropriate signal handlers */
 	/* Exact signals and handlers will depend on your implementation */
-	// signal(SIGINT, quit);
-	// signal(SIGTERM, quit);
+	signal(SIGINT, quit);
+	signal(SIGTERM, quit);
 
 	char input[MAXLINE];
 	char** tokens;
@@ -96,6 +100,15 @@ char ** tokenize(char* input){
 	}
 
 	tokens[tokenNo] = NULL ;
+	
+	/* printing tokens for debug purpose */
+	cout<<"Here are the tokens:"<<endl;
+	for(int i=0; i<tokenNo; i++){
+			cout<<tokens[i]<<" , ";
+	}
+	cout<<endl;
+	/* ends here */
+	
 	return tokens;
 }
 
@@ -116,6 +129,15 @@ int execute_command(char** tokens) {
 		exit(0);
 	} else if (!strcmp(tokens[0],"cd")) {
 		/* Change Directory, or print error on failure */
+		int err = chdir(tokens[1]);
+		if(err == -1){
+			cout<<"Unable to change directory. Error code: "<<errno<<endl;
+		}
+		else{
+			char *curr_dir = get_current_dir_name();
+			cout<<"The Current Directory now is: "<<curr_dir<<endl;
+			free(curr_dir);
+		}
 		return 0 ;
 	} else if (!strcmp(tokens[0],"parallel")) {
 		/* Analyze the command to get the jobs */
@@ -140,6 +162,7 @@ int execute_command(char** tokens) {
 			else {
 				/* File Execution */
 				/* Print error on failure, exit with error*/
+				
 				exit(0) ;
 			}
 		}
@@ -149,4 +172,7 @@ int execute_command(char** tokens) {
 		}
 	}
 	return 1 ;
+}
+
+void quit(int signum){
 }
