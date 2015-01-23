@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <iostream>
+#include <vector>
 #include <fstream>
 #include <errno.h>
 #include <unistd.h>
@@ -45,10 +46,12 @@ int main(int argc, char** argv){
 			break ;
 		}
 
+		int status;
 		// Calling the tokenizer function on the input line    
 		tokens = tokenize(input);	
 		// Executing the command parsed by the tokenizer
-		execute_command(tokens); 
+		status = execute_command(tokens); 
+		cout<<"Status of return: "<<status<<endl;
 		
 		// Freeing the allocated memory	
 		int i ;
@@ -183,23 +186,29 @@ int execute_command(char** tokens) {
 				i++;
 				j++;
 			}
+			command[j] = NULL;
 
 			int pid = fork() ;
 			if (pid == -1) {
 				cerr<<"Error: Could not create child process"<<endl;
 				continue;
 			}
-			else if(pid!=0){
+			else if(pid==0){
+				// Child process
 				execute_command(command);
+				exit(0);
 			}
 			else{
+				// Parent process
 				allpid.push_back(pid);
 			}
+			
+			free(command);
 		}
 
-		for(int i=0;i<=allpid.size();i++){
+		for(int i=0; i<= (int)allpid.size(); i++){
 			int status;
-			waitpid(allpid[i],&status,-1);
+			waitpid(allpid[i],&status,0);
 		}
 		
 		return 0 ;
@@ -209,6 +218,28 @@ int execute_command(char** tokens) {
 		/* Analyze the command to get the jobs */
 		/* Run jobs sequentially, print error on failure */
 		/* Stop on failure or if all jobs are completed */
+		/* Analyze the command to get the jobs */
+		/* Run jobs in parallel, or print error on failure */
+		int i=0;
+		while(tokens[i]!=NULL){
+			i++;
+			char **command = (char **) malloc(MAXLINE*sizeof(char*));
+			int j=0;
+			while(tokens[i]!=NULL && strcmp(tokens[i],":::")){
+				command[j] = tokens[i];
+				i++;
+				j++;
+			}
+			command[j] = NULL;
+
+			int ret_val = execute_command(command);
+			if(ret_val==-1){
+					cerr<<"Error: Aborting sequential execution due to failed return"<<endl;
+					return -1;
+			}
+			free(command);
+		}
+		
 		return 0 ;					// Return value accordingly
 	}
 	
@@ -276,6 +307,8 @@ int execute_command(char** tokens) {
 			/* Wait for child process to complete */
 			int status;
 			while(waitpid(pid, &status, WNOHANG) != pid);
+			if(status==0) return 0;
+			else return -1;
 		}
 	}
 	return 0;
