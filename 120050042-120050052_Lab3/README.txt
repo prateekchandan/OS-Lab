@@ -4,6 +4,10 @@ CS 377 - Lab Assignment 3 (A)
 23 January 2015
 Prof D. M. Dhamdhere
 
+Team :
+JVS Shyam - 120050052
+Prateek Chandan - 120050042
+
 ######################################################
 	
 To compile run  'make'
