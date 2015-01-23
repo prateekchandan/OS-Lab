@@ -23,35 +23,39 @@ char ** tokenize(char*) ;
 int execute_command(char** tokens) ;
 void quit(int signum);
 
+// Main function : Takes care of the Jash program itself
 int main(int argc, char** argv){
+	
 	parent_pid = getpid() ;
 	
-	/* Set (and define) appropriate signal handlers */
-	/* Exact signals and handlers will depend on your implementation */
+	/* Set & defined appropriate signal handlers */
 	signal(SIGINT, quit);
 	signal(SIGQUIT, quit);
 
+	/* Variables concerning command and its token */
 	char input[MAXLINE];
 	char** tokens;
-	//int status;
 	
 	while(1) { 
 		printf("$ "); // The prompt
+		fflush(stdout);
 		fflush(stdin);
 
 		char *in = fgets(input, MAXLINE, stdin); // Taking input one line at a time
+		
 		//Checking for EOF
 		if (in == NULL){
 			if (DEBUG) printf("jash: EOF found. Program will exit.\n");
 			break ;
 		}
 
-		int status;
+		int status; // return status of a command
+		
 		// Calling the tokenizer function on the input line    
 		tokens = tokenize(input);	
+		
 		// Executing the command parsed by the tokenizer
 		status = execute_command(tokens); 
-		cout<<"Status of return: "<<status<<endl;
 		
 		// Freeing the allocated memory	
 		int i ;
@@ -65,8 +69,9 @@ int main(int argc, char** argv){
 	return 0 ;
 }
 
-/*The tokenizer function takes a string of chars and forms tokens out of it*/
+/*The tokenizer function takes a string of characters and forms tokens out of it*/
 char ** tokenize(char* input){
+	
 	int i, doubleQuotes = 0, tokenIndex = 0, tokenNo = 0 ;
 	char *token = (char *)malloc(MAXLINE*sizeof(char));
 	char **tokens;
@@ -86,16 +91,19 @@ char ** tokenize(char* input){
 					tokenIndex = 0; 
 				}
 			}
-		} else if (doubleQuotes == 1){
+		}
+		else if (doubleQuotes == 1){
 			token[tokenIndex++] = readChar;
-		} else if (readChar == ' ' || readChar == '\n' || readChar == '\t'){
+		}
+		else if (readChar == ' ' || readChar == '\n' || readChar == '\t'){
 			token[tokenIndex] = '\0';
 			if (tokenIndex != 0){
 				tokens[tokenNo] = (char*)malloc(MAXLINE*sizeof(char));
 				strcpy(tokens[tokenNo++], token);
 				tokenIndex = 0; 
 			}
-		} else {
+		}
+		else{
 			token[tokenIndex++] = readChar;
 		}
 	}
@@ -111,18 +119,18 @@ char ** tokenize(char* input){
 	tokens[tokenNo] = NULL ;
 	
 	/* printing tokens for debug purpose */
-	/*
-	cout<<"Here are the tokens:"<<endl;
-	for(int i=0; i<tokenNo; i++){
+	if(DEBUG){
+		cout<<"Here are the tokens:"<<endl;
+		for(int i=0; i<tokenNo; i++){
 			cout<<tokens[i]<<" , ";
-	}
-	cout<<endl;
-	*/
-	/* ends here */
+		}
+		cout<<endl;
+	///////////////////////////////////////
 	
 	return tokens;
 }
 
+/* Function for taking a particular command and executing it */
 int execute_command(char** tokens) {
 	/* 
 	Takes the tokens from the parser and based on the type of command 
@@ -166,7 +174,10 @@ int execute_command(char** tokens) {
 		}
 		else{
 			char *curr_dir = get_current_dir_name();
-			cout<<"Current Directory changed to: "<<curr_dir<<endl;
+			if(DEBUG){
+				cout<<"Current Directory changed to: "<<curr_dir<<endl;
+				fflush(stdout);
+			}
 			free(curr_dir);
 		}
 		return 0 ;
@@ -177,6 +188,8 @@ int execute_command(char** tokens) {
 		/* Run jobs in parallel, or print error on failure */
 		int i=0;
 		vector<int> allpid;
+		
+		// Collect the tokens of commands one after another
 		while(tokens[i]!=NULL){
 			i++;
 			char **command = (char **) malloc(MAXLINE*sizeof(char*));
@@ -188,14 +201,15 @@ int execute_command(char** tokens) {
 			}
 			command[j] = NULL;
 
+			// Fork() to create a process for each command
 			int pid = fork() ;
 			if (pid == -1) {
 				cerr<<"Error: Could not create child process"<<endl;
-				continue;
 			}
 			else if(pid==0){
 				// Child process
 				execute_command(command);
+				free(command);
 				exit(0);
 			}
 			else{
@@ -206,6 +220,7 @@ int execute_command(char** tokens) {
 			free(command);
 		}
 
+		// Wait for the child processes to finish
 		for(int i=0; i<= (int)allpid.size(); i++){
 			int status;
 			waitpid(allpid[i],&status,0);

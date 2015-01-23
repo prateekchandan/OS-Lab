@@ -16,9 +16,15 @@ To execute run executable 'jash'
 Run 'make clean' to remove executables and .o files
 
 ######################################################
-	
-Create a single tar-zipped archive of your folder (which you have to submit) —
-tar ­zcvf <RollNumber1>_<RollNumber2>_lab3a.tgz <RollNumber1>_<RollNumber2>_lab3a
-
+The following features have been implemented:
+-> cd
+-> run
+-> parallel
+-> sequential
+-> exit
+-> File execution and error
+-> Signal and interrupt handling (Ctrl-C, Ctrl-D, etc)
+-> sequential_or (bonus)
+-> combined commands (bonus)
 
 ######################################################	
