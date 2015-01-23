@@ -215,11 +215,7 @@ int execute_command(char** tokens) {
 	}
 	
 	else if(!strcmp(tokens[0],"sequential")){
-		/* Analyze the command to get the jobs */
-		/* Run jobs sequentially, print error on failure */
-		/* Stop on failure or if all jobs are completed */
-		/* Analyze the command to get the jobs */
-		/* Run jobs in parallel, or print error on failure */
+		/* Implementation of sequential commands */
 		int i=0;
 		while(tokens[i]!=NULL){
 			i++;
@@ -241,6 +237,30 @@ int execute_command(char** tokens) {
 		}
 		
 		return 0 ;					// Return value accordingly
+	}
+	
+	else if(!strcmp(tokens[0],"sequential_or")){
+		/* Implementation of sequential_or commands */
+		int i=0;
+		while(tokens[i]!=NULL){
+			i++;
+			char **command = (char **) malloc(MAXLINE*sizeof(char*));
+			int j=0;
+			while(tokens[i]!=NULL && strcmp(tokens[i],":::")){
+				command[j] = tokens[i];
+				i++;
+				j++;
+			}
+			command[j] = NULL;
+
+			int ret_val = execute_command(command);
+			if(ret_val==0){
+					return 0;
+			}
+			free(command);
+		}
+		
+		return -1 ;					// Return value accordingly
 	}
 	
 	else{
