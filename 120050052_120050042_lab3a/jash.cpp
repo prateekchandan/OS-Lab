@@ -56,6 +56,10 @@ int main(int argc, char** argv){
 		
 		// Executing the command parsed by the tokenizer
 		status = execute_command(tokens); 
+		if(DEBUG){
+			cout<<"Return Status is: "<<status<<endl;
+			fflush(stdout);
+		}
 		
 		// Freeing the allocated memory	
 		int i ;
@@ -125,13 +129,14 @@ char ** tokenize(char* input){
 			cout<<tokens[i]<<" , ";
 		}
 		cout<<endl;
+	}
 	///////////////////////////////////////
 	
 	return tokens;
 }
 
 /* Function for taking a particular command and executing it */
-int execute_command(char** tokens) {
+int execute_command(char** tokens){
 	/* 
 	Takes the tokens from the parser and based on the type of command 
 	and proceeds to perform the necessary actions. 
@@ -172,7 +177,8 @@ int execute_command(char** tokens) {
 			}
 			return -1;
 		}
-		else{
+		else{ 
+			// directory opened successfully
 			char *curr_dir = get_current_dir_name();
 			if(DEBUG){
 				cout<<"Current Directory changed to: "<<curr_dir<<endl;
@@ -232,6 +238,8 @@ int execute_command(char** tokens) {
 	else if(!strcmp(tokens[0],"sequential")){
 		/* Implementation of sequential commands */
 		int i=0;
+		
+		// Collect the tokens of commands one after another
 		while(tokens[i]!=NULL){
 			i++;
 			char **command = (char **) malloc(MAXLINE*sizeof(char*));
@@ -243,20 +251,26 @@ int execute_command(char** tokens) {
 			}
 			command[j] = NULL;
 
+			// Execute the collected command
 			int ret_val = execute_command(command);
+			
 			if(ret_val==-1){
-					cerr<<"Error: Aborting sequential execution due to failed return"<<endl;
-					return -1;
+				// Command execution failed
+				cerr<<"Error: Aborting sequential execution due to failed return"<<endl;
+				free(command);
+				return -1;
 			}
 			free(command);
 		}
 		
-		return 0 ;					// Return value accordingly
+		return 0 ;					// Return value = success
 	}
 	
 	else if(!strcmp(tokens[0],"sequential_or")){
 		/* Implementation of sequential_or commands */
 		int i=0;
+		
+		// Collect the tokens of commands one after another
 		while(tokens[i]!=NULL){
 			i++;
 			char **command = (char **) malloc(MAXLINE*sizeof(char*));
@@ -268,20 +282,25 @@ int execute_command(char** tokens) {
 			}
 			command[j] = NULL;
 
+			// Execute the collected command
 			int ret_val = execute_command(command);
+			
 			if(ret_val==0){
-					return 0;
+				// Command execution succeeded for the first time, so return
+				free(command);
+				return 0;
 			}
 			free(command);
 		}
 		
-		return -1 ;					// Return value accordingly
+		return -1 ;					// Return value = failed (since OR is false)
 	}
 	
 	else{
 		/* Either file is to be executed or batch file to be run */
 		/* Child process creation (needed for both cases) */
-		int pid = fork() ;
+		int pid = fork();
+		
 		if (pid == 0) {
 			if (!strcmp(tokens[0],"run")) {
 				/* Locate file and run commands */
@@ -300,13 +319,16 @@ int execute_command(char** tokens) {
 					exit(-1);
 				}
 				
+				// Open the file and run the commands line by line
 				FILE *file = fopen(tokens[1], "r" );
 				if(file!=NULL){
 					char command[MAXLINE];
 					while (!feof(file)){
 						if (fgets(command, MAXLINE, file)){
-							char** inp_tokens = tokenize(command);
-							execute_command(inp_tokens);
+							char** inp_tokens = tokenize(command); // got tokens
+							execute_command(inp_tokens);			// executed command
+							
+							// Free memory of tokens
 							for(int i=0; inp_tokens[i] != NULL;i++){
 								free(inp_tokens[i]);
 							}
@@ -339,7 +361,7 @@ int execute_command(char** tokens) {
 		}
 		else{
 			/* Parent Process */
-			/* Wait for child process to complete */
+			/* Wait for child process to complete & obtain status*/
 			int status;
 			while(waitpid(pid, &status, WNOHANG) != pid);
 			if(status==0) return 0;
@@ -349,6 +371,7 @@ int execute_command(char** tokens) {
 	return 0;
 }
 
+/* Function for Signal Handling in main */
 void quit(int signum){
 		cout<<endl;
 }
