@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -125,16 +126,22 @@ int execute_command(char** tokens) {
 	and proceeds to perform the necessary actions. 
 	Returns 0 on success, -1 on failure. 
 	*/
-	if (tokens == NULL) {
+	if(tokens == NULL){
 		// Null Command
 		return -1 ; 				
-	} else if (tokens[0] == NULL) {
+	} 
+	
+	else if(tokens[0] == NULL){
 		// Empty Command
 		return 0 ;					
-	} else if (!strcmp(tokens[0],"exit")) {
+	}
+	
+	else if(!strcmp(tokens[0],"exit")){
 		/* Quit the running process */
 		exit(0);
-	} else if (!strcmp(tokens[0],"cd")) {
+	}
+	
+	else if(!strcmp(tokens[0],"cd")){
 		/* Change Directory, or print error on failure */
 		char *path = tokens[1];
 		if(tokens[1]==NULL || !strcmp(tokens[1],"~")){
@@ -160,16 +167,52 @@ int execute_command(char** tokens) {
 			free(curr_dir);
 		}
 		return 0 ;
-	} else if (!strcmp(tokens[0],"parallel")) {
+	}
+	
+	else if(!strcmp(tokens[0],"parallel")){
 		/* Analyze the command to get the jobs */
 		/* Run jobs in parallel, or print error on failure */
+		int i=0;
+		vector<int> allpid;
+		while(tokens[i]!=NULL){
+			i++;
+			char **command = (char **) malloc(MAXLINE*sizeof(char*));
+			int j=0;
+			while(tokens[i]!=NULL && strcmp(tokens[i],":::")){
+				command[j] = tokens[i];
+				i++;
+				j++;
+			}
+
+			int pid = fork() ;
+			if (pid == -1) {
+				cerr<<"Error: Could not create child process"<<endl;
+				continue;
+			}
+			else if(pid!=0){
+				execute_command(command);
+			}
+			else{
+				allpid.push_back(pid);
+			}
+		}
+
+		for(int i=0;i<=allpid.size();i++){
+			int status;
+			waitpid(allpid[i],&status,-1);
+		}
+		
 		return 0 ;
-	} else if (!strcmp(tokens[0],"sequential")) {
+	}
+	
+	else if(!strcmp(tokens[0],"sequential")){
 		/* Analyze the command to get the jobs */
 		/* Run jobs sequentially, print error on failure */
 		/* Stop on failure or if all jobs are completed */
 		return 0 ;					// Return value accordingly
-	} else {
+	}
+	
+	else{
 		/* Either file is to be executed or batch file to be run */
 		/* Child process creation (needed for both cases) */
 		int pid = fork() ;
@@ -183,8 +226,16 @@ int execute_command(char** tokens) {
 					exit(-1);
 				}
 				
+				// check whether the file is actually a directory
+				struct stat statbuf;
+				stat(tokens[1], &statbuf);
+				if(S_ISDIR(statbuf.st_mode)){
+					cerr<<"Error: The file name corresponds to a directory"<<endl;
+					exit(-1);
+				}
+				
 				FILE *file = fopen(tokens[1], "r" );
-				if(file){
+				if(file!=NULL){
 					char command[MAXLINE];
 					while (!feof(file)){
 						if (fgets(command, MAXLINE, file)){
@@ -220,7 +271,7 @@ int execute_command(char** tokens) {
 				exit(0);
 			}
 		}
-		else {
+		else{
 			/* Parent Process */
 			/* Wait for child process to complete */
 			int status;
