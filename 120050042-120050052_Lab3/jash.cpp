@@ -5,12 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 using namespace std;
 
 #define MAXLINE 1000
 #define DEBUG 0
 
 /* Function declarations and globals */
+extern char **environ;
 int parent_pid ;
 char ** tokenize(char*) ;
 int execute_command(char** tokens) ;
@@ -26,7 +29,6 @@ int main(int argc, char** argv){
 
 	char input[MAXLINE];
 	char** tokens;
-	int status;
 	
 	while(1) { 
 		printf("$ "); // The prompt
@@ -42,7 +44,7 @@ int main(int argc, char** argv){
 		// Calling the tokenizer function on the input line    
 		tokens = tokenize(input);	
 		// Executing the command parsed by the tokenizer
-		status = execute_command(tokens) ; 
+		execute_command(tokens); 
 		
 		// Freeing the allocated memory	
 		int i ;
@@ -64,7 +66,7 @@ char ** tokenize(char* input){
 
 	tokens = (char **) malloc(MAXLINE*sizeof(char*));
 
-	for(i =0; i < strlen(input); i++){
+	for(i =0; i < (int)strlen(input); i++){
 		char readChar = input[i];
 
 		if (readChar == '"'){
@@ -102,11 +104,13 @@ char ** tokenize(char* input){
 	tokens[tokenNo] = NULL ;
 	
 	/* printing tokens for debug purpose */
+	/*
 	cout<<"Here are the tokens:"<<endl;
 	for(int i=0; i<tokenNo; i++){
 			cout<<tokens[i]<<" , ";
 	}
 	cout<<endl;
+	*/
 	/* ends here */
 	
 	return tokens;
@@ -131,11 +135,19 @@ int execute_command(char** tokens) {
 		/* Change Directory, or print error on failure */
 		int err = chdir(tokens[1]);
 		if(err == -1){
-			cout<<"Unable to change directory. Error code: "<<errno<<endl;
+			if(errno==ENOTDIR){
+				cerr<<"Error: The path provided is not that of a directory"<<endl;
+			}
+			else if(errno==ENOENT){
+				cerr<<"Error: The path to the directory does not exist"<<endl;
+			}
+			else{
+				cerr<<"Erro: Following error code occurred while executing cd: "<<errno<<endl;
+			}
 		}
 		else{
 			char *curr_dir = get_current_dir_name();
-			cout<<"The Current Directory now is: "<<curr_dir<<endl;
+			cout<<"Current Directory changed to: "<<curr_dir<<endl;
 			free(curr_dir);
 		}
 		return 0 ;
@@ -162,13 +174,23 @@ int execute_command(char** tokens) {
 			else {
 				/* File Execution */
 				/* Print error on failure, exit with error*/
-				
+				int err = execvp(tokens[0],tokens);
+				if(err==-1){
+					if(errno==ENOENT){
+						cerr<<"Error: The file does not exist : "<<tokens[0]<<endl;
+					}
+					else{
+						cerr<<"Error: Following error code occurred while file execution: "<<errno<<endl;
+					}
+				}
 				exit(0) ;
 			}
 		}
 		else {
 			/* Parent Process */
 			/* Wait for child process to complete */
+			int status;
+			while(waitpid(pid, &status, WNOHANG) != pid);
 		}
 	}
 	return 1 ;
