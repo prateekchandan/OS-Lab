@@ -21,13 +21,11 @@ using namespace std;
 /* Function declarations and globals */
 extern char **environ;
 int parent_pid ;
-int old_outfd,old_infd;
 char ** tokenize(char*) ;
 int execute_command(char** tokens) ;
 bool is_piped(char **tokens, char **temp1, char **temp2);
 void false_quit(int signum);
 void main_quit(int signum);
-void make_default_stdio();
 
 //declared global to free memory
 char** tokens;
@@ -312,39 +310,32 @@ int execute_command(char** tokens){
 			return -1;
 		}
 		else if(pid == 0){
-			dup2(pfds[1],fileno(stdout));  /* make stdout same as pfds[1] */
-			close(pfds[1]);
 			close(pfds[0]);
+			dup2(pfds[1],1);
+			//execvp(temp1[0], temp);
 			execute_command(temp1);
 			exit(0);
 		}
-		else{
-			/* In parent process */
-			/* Wait for child process to complete & obtain status*/
-			int status;
-			waitpid(pid, &status, 0);
-			int pid1 = fork();
+
+		int pid1 = fork();
 		
-			if(pid1 == -1){
-				// Fork Failed
-				perror("Pipe: Forking failed in piped command");
-				return -1;
-			}
-			else if(pid1 == 0){
-				dup2(pfds[0],fileno(stdin));   /* make stdin same as pfds[0] */
-				close(pfds[0]);
-				execute_command(temp2);
-				exit(0);
-			}
-			else{
-				/* In parent process */
-				/* Wait for child process to complete & obtain status*/
-				int status2;
-				waitpid(pid1, &status2, 0);
-				if(status2==0) return 0;
-				else return -1;
-			}
+		if(pid1 == -1){
+			// Fork Failed
+			perror("Pipe: Forking failed in piped command");
+			return -1;
 		}
+		else if(pid1 == 0){
+			close(pfds[1]);
+			dup2(pfds[0],0);
+			//execvp(temp2[0], temp2);
+			execute_command(temp2);
+			exit(0);
+		}
+
+		close(pfds[0]) ;
+		waitpid(-1,NULL,0);
+		close(pfds[1]) ;
+		waitpid(-1,NULL,0);
 
 		return 0;
 	}
@@ -392,7 +383,7 @@ int execute_command(char** tokens){
 
 				if(gotout){
 					cerr<<"Error: Multiple output streams"<<endl;
-					exit(-1);
+					return -1;
 				}
 
 				gotout=1;
@@ -408,7 +399,7 @@ int execute_command(char** tokens){
 
 				if(gotout){
 					cerr<<"Error: Multiple output streams"<<endl;
-					exit(-1);
+					return -1;
 				}
 
 				gotout=1;
@@ -424,7 +415,7 @@ int execute_command(char** tokens){
 
 				if(gotin){
 					cerr<<"Error: Multiple Input streams"<<endl;
-					exit(-1);
+					return -1;
 				}
 
 				gotin=1;
@@ -442,9 +433,7 @@ int execute_command(char** tokens){
 		if (pid == 0) {
 
 			int infd,outfd;
-			old_outfd = dup(fileno(stdout));
-			old_infd = dup(fileno(stdin));
-
+		
 			if(gotin){
 				infd = open(infile, O_RDWR);
 				if (infd < 0){
@@ -554,15 +543,4 @@ void main_quit(int signum){
 	}
 	free(tokens);
 	exit(0);
-}
-
-void make_default_stdio(){
-	
-	close(fileno(stdin));
-    dup2(old_infd, fileno(stdin));
-    close(old_infd);
-
-    close(fileno(stdout));
-    dup2(old_outfd, fileno(stdout));
-    close(old_outfd);
 }
