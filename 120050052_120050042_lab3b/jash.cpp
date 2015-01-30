@@ -14,6 +14,7 @@
 using namespace std;
 
 #define MAXLINE 1000
+// Debug = 1 will print various debug messages
 #define DEBUG 0
 
 /* Function declarations and globals */
@@ -21,7 +22,11 @@ extern char **environ;
 int parent_pid ;
 char ** tokenize(char*) ;
 int execute_command(char** tokens) ;
-void quit(int signum);
+void false_quit(int signum);
+void main_quit(int signum);
+
+//declared global to free memory
+char** tokens;
 
 // Main function : Takes care of the Jash program itself
 int main(int argc, char** argv){
@@ -29,12 +34,12 @@ int main(int argc, char** argv){
 	parent_pid = getpid() ;
 	
 	/* Set & defined appropriate signal handlers */
-	signal(SIGINT, quit);
-	signal(SIGQUIT, quit);
+	signal(SIGINT, false_quit);
+	signal(SIGQUIT, false_quit);
+	signal(EOF, main_quit);
 
 	/* Variables concerning command and its token */
 	char input[MAXLINE];
-	char** tokens;
 	
 	while(1) { 
 		printf("$ "); // The prompt
@@ -166,15 +171,7 @@ int execute_command(char** tokens){
 		int err = chdir(path);
 		if(err == -1){
 			// Cases of directory access error
-			if(errno==ENOTDIR){
-				cerr<<"Error: The path provided is not that of a directory"<<endl;
-			}
-			else if(errno==ENOENT){
-				cerr<<"Error: The path to the directory does not exist"<<endl;
-			}
-			else{
-				cerr<<"Error: Following error code occurred while executing cd: "<<errno<<endl;
-			}
+			perror("Error in cd ");
 			return -1;
 		}
 		else{ 
@@ -348,12 +345,7 @@ int execute_command(char** tokens){
 				/* Print error on failure, exit with error*/
 				int err = execvp(tokens[0],tokens);
 				if(err==-1){
-					if(errno==ENOENT){
-						cerr<<"Error: The file does not exist : "<<tokens[0]<<endl;
-					}
-					else{
-						cerr<<"Error: Following error code occurred while file execution: "<<errno<<endl;
-					}
+					perror("Error");
 					exit(-1);
 				}
 				exit(0);
@@ -371,7 +363,18 @@ int execute_command(char** tokens){
 	return 0;
 }
 
-/* Function for Signal Handling in main */
-void quit(int signum){
-		cout<<endl;
+/* Function for Signal Handling in main for ignored signals */
+void false_quit(int signum){
+	cout<<endl;
+}
+
+/* Function for Signal Handling in main for SIGHUP */
+void main_quit(int signum){
+	cout<<endl;
+	fflush(stdout);
+	for(int i=0;tokens[i]!=NULL;i++){
+		free(tokens[i]);
+	}
+	free(tokens);
+	exit(0);
 }

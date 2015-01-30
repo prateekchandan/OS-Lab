@@ -1,3 +1,7 @@
 cd test
-ls
+more test1.run
 pwd
+cd ..
+pwd
+exit
+this command not to be executed
