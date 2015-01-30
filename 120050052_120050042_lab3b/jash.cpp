@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <iostream>
+#include <algorithm>
 #include <vector>
 #include <fstream>
 #include <errno.h>
@@ -25,10 +26,13 @@ char ** tokenize(char*) ;
 int execute_command(char** tokens) ;
 bool is_piped(char **tokens, char **temp1, char **temp2);
 void false_quit(int signum);
-void main_quit(int signum);
+void main_quit();
 
 //declared global to free memory
 char** tokens;
+
+// To store all runing background proceeses
+vector<int> backgroud_child_processes;
 
 // Main function : Takes care of the Jash program itself
 int main(int argc, char** argv){
@@ -38,7 +42,7 @@ int main(int argc, char** argv){
 	/* Set & defined appropriate signal handlers */
 	signal(SIGINT, false_quit);
 	signal(SIGQUIT, false_quit);
-	signal(EOF, main_quit);
+	atexit(main_quit);
 
 	/* Variables concerning command and its token */
 	char input[MAXLINE];
@@ -213,7 +217,12 @@ int execute_command(char** tokens){
 		}
 		else if(pid==0){
 			// To define signal handler
-			//setpgid(0,0);
+			
+			/*signal(SIGINT, false_quit);
+			signal(SIGQUIT, false_quit);*/
+
+			//int sid = setsid();
+
 			int ret_status=execute_command(tokens);
 			cout<<"\b\bCommand : ";
 			int i=0;
@@ -226,7 +235,18 @@ int execute_command(char** tokens){
 			else
 				cout<<"Status : Failed ";
 			cout<<"\n$ ";
+
+			int pid = getpid();
+			vector<int>::iterator it = find(backgroud_child_processes.begin(), backgroud_child_processes.end(), pid);
+			
+			if(it != backgroud_child_processes.end()){
+
+			}
+			backgroud_child_processes.erase(it);
 			exit(0);
+		}
+		else{
+			backgroud_child_processes.push_back(pid);
 		}
 	}
 	
@@ -571,16 +591,17 @@ int execute_command(char** tokens){
 
 /* Function for Signal Handling in main for ignored signals */
 void false_quit(int signum){
-	cout<<endl;
+	cout<<endl<<"$ ";
+	fflush(stdout);
 }
 
 /* Function for Signal Handling in main for SIGHUP */
-void main_quit(int signum){
+void main_quit(){
 	cout<<endl;
-	fflush(stdout);
-	for(int i=0;tokens[i]!=NULL;i++){
-		free(tokens[i]);
+	for (int i = 0; i < backgroud_child_processes.size(); ++i)
+	{
+		cout<<" Killed : "<<backgroud_child_processes[i]<<endl;
+		kill(backgroud_child_processes[i],SIGKILL);
 	}
-	free(tokens);
 	exit(0);
 }
