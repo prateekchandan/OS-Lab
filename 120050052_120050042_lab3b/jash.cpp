@@ -309,45 +309,42 @@ int execute_command(char** tokens){
 			return -1;
 		}
 		else if(pid == 0){
-			/* In child process */
 			close(1);       /* close normal stdout */
 			dup(pfds[1]);   /* make stdout same as pfds[1] */
 			close(pfds[0]);
-			//dup2(pfds[1],1);   /* make stdout same as pfds[1] */
-			//close(pfds[0]);
-			execute_command(temp1);
-			
-			close(0);       /* close normal stdin */
-			dup(pfds[0]);   /* make stdin same as pfds[0] */
-			close(pfds[1]);
-			dup(1);
-			//dup2(pfds[0],0);   /* make stdin same as pfds[0] */
-			//close(pfds[1]);
-			execute_command(temp2);
-			
-			exit(0);
+			exit(execute_command(temp1));
 		}
 		else{
 			/* In parent process */
 			/* Wait for child process to complete & obtain status*/
 			int status;
 			while(waitpid(pid, &status, WNOHANG) != pid);
-			if(status==0) return 0;
-			else return -1;
-		}
+			if(status!=0) return -1;
+
+			int pid1 = fork();
 		
-		/*
-		int i=0;
-		while(temp1[i]!=NULL){
-			cout<<temp1[i]<<endl;
-			i++;
+			if(pid1 == -1){
+				// Fork Failed
+				perror("Pipe: Forking failed in piped command");
+				return -1;
+			}
+			else if(pid1 == 0){
+				close(0);       /* close normal stdin */
+				dup(pfds[0]);   /* make stdin same as pfds[0] */
+				close(pfds[1]);
+				exit(execute_command(temp2));
+			}
+			else{
+				/* In parent process */
+				/* Wait for child process to complete & obtain status*/
+				
+				while(waitpid(pid1, &status, WNOHANG) != pid1);
+				if(status==0) return 0;
+				else return -1;
+			}
+			
 		}
-		i=0;
-		while(temp2[i]!=NULL){
-			cout<<temp2[i]<<endl;
-			i++;
-		}
-		*/
+
 		return 0;
 	}
 		
