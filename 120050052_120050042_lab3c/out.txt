@@ -1,0 +1,7 @@
+a.out
+file.cron
+in.txt
+jash.cpp
+Makefile
+out.txt
+README.txt

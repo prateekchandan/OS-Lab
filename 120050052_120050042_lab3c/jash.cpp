@@ -20,6 +20,17 @@ using namespace std;
 // Debug = 1 will print various debug messages
 #define DEBUG 0
 
+/* Function declarations and globals */
+extern char **environ;
+int parent_pid ;
+char ** tokenize(char*) ;
+int execute_command(char** tokens) ;
+bool is_piped(char **tokens, char **temp1, char **temp2);
+void false_quit(int signum);
+void main_quit();
+void sigchild_handler(int sig);
+bool is_backgroud(char **tokens);
+
 // Structure  for a cron job
 struct cron{
 	int h,m;
@@ -38,6 +49,8 @@ struct cron{
 			h = atoi(tokens[1]);
 
 		command = tokens + 2;
+
+		if(is_backgroud(command));
 
 		int i=0;
 		while(command[i]!=NULL){
@@ -81,16 +94,6 @@ struct cron{
 
 	}
 };
-
-/* Function declarations and globals */
-extern char **environ;
-int parent_pid ;
-char ** tokenize(char*) ;
-int execute_command(char** tokens) ;
-bool is_piped(char **tokens, char **temp1, char **temp2);
-void false_quit(int signum);
-void main_quit();
-void sigchild_handler(int sig);
 
 //declared global to free memory
 char** tokens;
