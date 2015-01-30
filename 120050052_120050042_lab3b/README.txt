@@ -1,5 +1,5 @@
 ######################################################
-CS 377 - Lab Assignment 3 (A)
+CS 377 - Lab Assignment 3 (B)
 
 23 January 2015
 Prof D. M. Dhamdhere
@@ -17,6 +17,9 @@ Run 'make clean' to remove executables and .o files
 
 ######################################################
 The following features have been implemented:
+
+From 3A
+
 -> cd
 -> run
 -> parallel
@@ -26,5 +29,13 @@ The following features have been implemented:
 -> Signal and interrupt handling (Ctrl-C, Ctrl-D, etc)
 -> sequential_or (bonus)
 -> combined commands (bonus)
+
+From 3B
+
+-> implemented the file redirections
+-> implemented pipeline
+-> nesting and priorities (bonus)
+
+
 
 ######################################################	
