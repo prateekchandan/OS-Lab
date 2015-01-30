@@ -21,11 +21,13 @@ using namespace std;
 /* Function declarations and globals */
 extern char **environ;
 int parent_pid ;
+int old_outfd,old_infd;
 char ** tokenize(char*) ;
 int execute_command(char** tokens) ;
 bool is_piped(char **tokens, char **temp1, char **temp2);
 void false_quit(int signum);
 void main_quit(int signum);
+void make_default_stdio();
 
 //declared global to free memory
 char** tokens;
@@ -434,15 +436,16 @@ int execute_command(char** tokens){
 
 			st++;
 		}
-		tokens[last]=NULL;
+		if(gotout || gotin)
+			tokens[last]=NULL;
 
 		int pid = fork();
 		
 		if (pid == 0) {
 
 			int infd,outfd;
-			int old_outfd = dup(fileno(stdout));
-			int old_infd = dup(fileno(stdin));
+			old_outfd = dup(fileno(stdout));
+			old_infd = dup(fileno(stdin));
 
 			if(gotin){
 				infd = open(infile, O_RDWR);
@@ -553,4 +556,15 @@ void main_quit(int signum){
 	}
 	free(tokens);
 	exit(0);
+}
+
+void make_default_stdio(){
+	
+	close(fileno(stdin));
+    dup2(old_infd, fileno(stdin));
+    close(old_infd);
+
+    close(fileno(stdout));
+    dup2(old_outfd, fileno(stdout));
+    close(old_outfd);
 }
