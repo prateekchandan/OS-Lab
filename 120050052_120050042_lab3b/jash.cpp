@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <pwd.h>
+#include <fcntl.h>
 using namespace std;
 
 #define MAXLINE 1000
@@ -380,9 +381,100 @@ int execute_command(char** tokens){
 	else{
 		/* Either file is to be executed or batch file to be run */
 		/* Child process creation (needed for both cases) */
+		int st=0 , last = 0, gotout=0, gotin =0 ,outmode;
+		char *infile , *outfile;
+
+		while(tokens[st]!=NULL){
+			if(!strcmp(tokens[st] , ">")){
+				
+				if(!(gotin || gotout))
+					last = st;
+
+				if(gotout){
+					cerr<<"Error: Multiple output streams"<<endl;
+					exit(-1);
+				}
+
+				gotout=1;
+				outfile = tokens[st+1];
+				outmode=1;
+				st++;
+			}
+
+			if(!strcmp(tokens[st] , ">>")){
+				
+				if(!(gotin || gotout))
+					last = st;
+
+				if(gotout){
+					cerr<<"Error: Multiple output streams"<<endl;
+					exit(-1);
+				}
+
+				gotout=1;
+				outfile = tokens[st+1];
+				outmode=2;
+				st++;
+			}
+
+			if(!strcmp(tokens[st] , "<")){
+				
+				if(!(gotin || gotout))
+					last = st;
+
+				if(gotin){
+					cerr<<"Error: Multiple Input streams"<<endl;
+					exit(-1);
+				}
+
+				gotin=1;
+				infile = tokens[st+1];
+				st++;
+			}
+
+			st++;
+		}
+		tokens[last]=NULL;
+
 		int pid = fork();
 		
 		if (pid == 0) {
+
+			int infd,outfd;
+			int old_outfd = dup(fileno(stdout));
+			int old_infd = dup(fileno(stdin));
+
+			if(gotin){
+				infd = open(infile, O_RDWR);
+				if (infd < 0){
+					cerr<<"Error: Invalid Input File"<<endl;
+					exit(-1);
+				}
+
+				dup2(infd,0);
+				close(infd);
+			}
+
+			if(gotout){
+				if(outmode==1)
+					outfd = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, 0777);
+				else{
+					if(access(outfile, F_OK) == 0){
+						outfd = open(outfile, O_RDWR | O_APPEND);
+					}
+					else
+						outfd = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, 0777);
+				}
+
+				if (outfd < 0){
+					cerr<<"Error: Writing to file"<<endl;
+					exit(-1);
+				}
+
+				dup2(outfd,1);
+				close(outfd);
+			}
+
 			if (!strcmp(tokens[0],"run")) {
 				/* Locate file and run commands */
 				/* May require recursive call to execute_command */
