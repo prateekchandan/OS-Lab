@@ -90,6 +90,7 @@ int execute_command(char** tokens) ;
 bool is_piped(char **tokens, char **temp1, char **temp2);
 void false_quit(int signum);
 void main_quit();
+void sigchild_handler(int sig);
 
 //declared global to free memory
 char** tokens;
@@ -131,7 +132,7 @@ int main(int argc, char** argv){
 		// Executing the command parsed by the tokenizer
 		status = execute_command(tokens); 
 		if(DEBUG){
-			cout<<"Return Status is: "<<status<<endl;
+			cout<<"Return Status is: "<<(status<0 ? -1: 0)<<endl;
 			fflush(stdout);
 		}
 		
@@ -272,6 +273,8 @@ int execute_command(char** tokens){
 	}
 
 	else if(is_backgroud(tokens)){
+		
+		signal(SIGCHLD,sigchild_handler);
 		int pid=fork();
 
 		if(pid==-1){
@@ -292,8 +295,9 @@ int execute_command(char** tokens){
 			while(tokens[i]!=NULL)
 				cout<<tokens[i++]<<" ";
 
-			cout<<"\nPID : "<<getpid()<<endl;
-			if(ret_status == 0)
+			//int pid_num = (ret_status>0 ? ret_status : -ret_status);
+			cout<<"\nPID : "<<getpid()+1<<endl;
+			if(ret_status >= 0)
 				cout<<"Status : Successful ";
 			else
 				cout<<"Status : Failed ";
@@ -568,7 +572,7 @@ int execute_command(char** tokens){
 		close(pfds[1]) ;
 		waitpid(-1,NULL,0);
 
-		return 0;
+		return getpid();
 	}
 		
 	else if(!strcmp(tokens[0],"exit")){
@@ -603,6 +607,8 @@ int execute_command(char** tokens){
 	else{
 		/* Either file is to be executed or batch file to be run */
 		/* Child process creation (needed for both cases) */
+		
+		/* Also file I/O redirection is to be incorporated */
 		int st=0 , last = 0, gotout=0, gotin =0 ,outmode;
 		char *infile , *outfile;
 
@@ -754,10 +760,11 @@ int execute_command(char** tokens){
 			int status;
 			while(waitpid(pid, &status, WNOHANG) != pid);
 			if(status==0) return 0;
-			else return -1;
+			else return -1*pid;
 		}
+		return getpid();
 	}
-	return 0;
+	return 1;
 }
 
 /* Function for Signal Handling in main for ignored signals */
@@ -780,4 +787,9 @@ void main_quit(){
 		}
 	}
 	exit(0);
+}
+
+/* Handler for parent of background processes (on child's death) */
+void sigchild_handler(int sig){
+  while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
 }
