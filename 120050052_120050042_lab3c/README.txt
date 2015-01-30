@@ -38,5 +38,8 @@ From 3B
 
 From 3C
 
+-> Implemented background processes
+-> Implemented cron job as specified
+
 
 ######################################################	
