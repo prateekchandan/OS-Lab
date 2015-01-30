@@ -1,5 +1,5 @@
 ######################################################
-CS 377 - Lab Assignment 3 (B)
+CS 377 - Lab Assignment 3 (C)
 
 23 January 2015
 Prof D. M. Dhamdhere
@@ -36,6 +36,7 @@ From 3B
 -> implemented pipeline
 -> nesting and priorities (bonus)
 
+From 3C
 
 
 ######################################################	
