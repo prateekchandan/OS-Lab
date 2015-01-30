@@ -22,6 +22,7 @@ extern char **environ;
 int parent_pid ;
 char ** tokenize(char*) ;
 int execute_command(char** tokens) ;
+bool is_piped(char **tokens, char **temp1, char **temp2);
 void false_quit(int signum);
 void main_quit(int signum);
 
@@ -140,6 +141,32 @@ char ** tokenize(char* input){
 	return tokens;
 }
 
+/* Function to check for pipe and break commands suitably */
+bool is_piped(char **tokens, char **temp1, char **temp2){
+	
+	int i=0;	
+	// Collect the tokens of commands one after another
+	while(tokens[i]!=NULL && !strcmp(tokens[0],"|")){
+		temp1[i] = tokens[i];
+		i++;
+	}
+	temp1[i+1] = NULL;
+	
+	if(tokens[i]==NULL){
+		return false;
+	}
+	i++;
+	
+	int j=0;
+	while(tokens[i]!=NULL){
+		temp2[j] = tokens[i];
+		i++;
+		j++;
+	}
+	temp2[j+1] = NULL;
+	return true;
+}
+
 /* Function for taking a particular command and executing it */
 int execute_command(char** tokens){
 	/* 
@@ -147,6 +174,11 @@ int execute_command(char** tokens){
 	and proceeds to perform the necessary actions. 
 	Returns 0 on success, -1 on failure. 
 	*/
+	
+	char **temp1, **temp2; // Used if pipe is present
+	temp1 = (char **) malloc(MAXLINE*sizeof(char*));
+	temp2 = (char **) malloc(MAXLINE*sizeof(char*));
+	
 	if(tokens == NULL){
 		// Null Command
 		return -1 ; 				
@@ -291,6 +323,22 @@ int execute_command(char** tokens){
 		}
 		
 		return -1 ;					// Return value = failed (since OR is false)
+	}
+	
+	else if(is_piped(tokens,temp1,temp2)){
+		
+		/* Implementation of piped command */
+		int i=0;
+		while(temp1[i]!=NULL){
+			cout<<temp1[i]<<endl;
+			i++;
+		}
+		i=0;
+		while(temp2[i]!=NULL){
+			cout<<temp2[i]<<endl;
+			i++;
+		}
+		return 0;
 	}
 	
 	else{
