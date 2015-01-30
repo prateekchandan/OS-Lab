@@ -221,7 +221,7 @@ int execute_command(char** tokens){
 			/*signal(SIGINT, false_quit);
 			signal(SIGQUIT, false_quit);*/
 
-			//int sid = setsid();
+			int sid = setsid();
 
 			int ret_status=execute_command(tokens);
 			cout<<"\b\bCommand : ";
@@ -601,7 +601,7 @@ void main_quit(){
 	for (int i = 0; i < backgroud_child_processes.size(); ++i)
 	{
 		cout<<" Killed : "<<backgroud_child_processes[i]<<endl;
-		kill(backgroud_child_processes[i],SIGKILL);
+		killpg(backgroud_child_processes[i],SIGTERM);
 	}
 	exit(0);
 }
