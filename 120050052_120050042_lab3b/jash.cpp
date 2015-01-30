@@ -13,11 +13,74 @@
 #include <sys/wait.h>
 #include <pwd.h>
 #include <fcntl.h>
+#include <time.h>
 using namespace std;
 
 #define MAXLINE 1000
 // Debug = 1 will print various debug messages
 #define DEBUG 0
+
+// Structure  for a cron job
+struct cron{
+	int h,m;
+	char **command;
+	int wait_time;
+
+	cron(char **tokens){
+		if(!strcmp(tokens[0],"*"))
+			m = -1;
+		else
+			m = atoi(tokens[0]);
+
+		if(!strcmp(tokens[1],"*"))
+			h = -1;
+		else
+			h = atoi(tokens[1]);
+
+		command = tokens + 2;
+
+		int i=0;
+		while(command[i]!=NULL){
+			cout<<command[i]<<" ";
+			i++;
+		}
+		wait_time = find_wait_time();
+
+	}
+
+	int find_wait_time(){
+		time_t now;
+		struct tm *now_tm;
+
+		now = time(NULL);
+		now_tm = localtime(&now);
+		int hour = now_tm->tm_hour;
+		int minute = now_tm->tm_min;
+
+		if(h == -1 && m == -1)
+			return 0;
+
+		if(h==-1)
+			return ((m+60-minute)%60)*60;
+		
+		if(m==-1){
+			if(h==hour)
+				return 0;
+			else{
+				int hdiff = (h+24 - hour)%24 - 1;
+				return hdiff * 60 * 60 + (60-minute) * 60;
+			}
+		}
+
+		else{
+			int m1 = h*60+m;
+			int m2 = hour*60+minute;
+
+			return ((m1 + 1440 -m2) % 1440) * 60;
+		}
+
+	}
+};
 
 /* Function declarations and globals */
 extern char **environ;
@@ -221,7 +284,7 @@ int execute_command(char** tokens){
 			/*signal(SIGINT, false_quit);
 			signal(SIGQUIT, false_quit);*/
 
-			int sid = setsid();
+			setsid();
 
 			int ret_status=execute_command(tokens);
 			cout<<"\b\bCommand : ";
@@ -240,14 +303,122 @@ int execute_command(char** tokens){
 			vector<int>::iterator it = find(backgroud_child_processes.begin(), backgroud_child_processes.end(), pid);
 			
 			if(it != backgroud_child_processes.end()){
-
+				backgroud_child_processes.erase(it);
 			}
-			backgroud_child_processes.erase(it);
 			exit(0);
 		}
 		else{
 			backgroud_child_processes.push_back(pid);
 		}
+	}
+
+	else if(!strcmp(tokens[0],"cron")){
+
+		// Check if the path is a file
+		if(tokens[1]==NULL){
+			perror("No argument given to run command");
+			exit(-1);
+		}
+
+		// Check if path is a directory
+		struct stat statbuf;
+		stat(tokens[1], &statbuf);
+		if(S_ISDIR(statbuf.st_mode)){
+			perror("The file name corresponds to a directory");
+			exit(-1);
+		}
+
+		int pid=fork();
+
+		// Process creation failed
+		if(pid==-1){
+			perror("Failed to create background process");
+			return -1;
+		}
+		if(pid==0){
+
+			// Detaching this file
+			setsid();
+
+			// Open the file and run the commands line by line
+			FILE *file = fopen(tokens[1], "r" );
+			if(file!=NULL){
+
+				vector<cron> task;
+
+				char command[MAXLINE];
+				while (!feof(file)){
+					if (fgets(command, MAXLINE, file)){
+						char** inp_tokens = tokenize(command); // got tokens
+						
+						int i=0;
+						while(inp_tokens[i]!=NULL)
+							cout<<inp_tokens[i++]<<" ";
+
+						// 1 or 2 in null
+						if(inp_tokens==NULL || inp_tokens[0]==NULL || inp_tokens [1]==NULL)
+							continue;	
+
+						task.push_back(cron(inp_tokens));	
+					}
+				}
+
+				fclose(file);
+
+				if(task.size()>0){
+					int l = task.size();
+					while(1){
+						for (int i = 0; i < l; ++i)
+							task[i].wait_time = task[i].find_wait_time();
+						
+						for (int i = 0; i < l; ++i){
+							if(task[i].wait_time == 0)
+							{
+								execute_command(task[i].command);
+								task[i].wait_time = task[i].find_wait_time();
+							}
+						}
+
+						int mintime = 99999999;
+						for (int i = 0; i < l; ++i){
+							if(task[i].wait_time < mintime)
+								mintime = task[i].wait_time;
+						}
+
+						if(mintime == 0)
+							sleep(60);
+
+						else 
+							sleep(mintime);
+
+					}
+				}
+
+			}
+			else{
+				perror("Could not open the file (or) file does not exist");
+
+				int pid = getpid();
+				vector<int>::iterator it = find(backgroud_child_processes.begin(), backgroud_child_processes.end(), pid);
+				
+				if(it != backgroud_child_processes.end()){
+					backgroud_child_processes.erase(it);
+				}
+				exit(-1);
+			}
+
+			int pid = getpid();
+			vector<int>::iterator it = find(backgroud_child_processes.begin(), backgroud_child_processes.end(), pid);
+			
+			if(it != backgroud_child_processes.end()){
+				backgroud_child_processes.erase(it);
+			}
+			exit(0);
+		}
+		else{
+			backgroud_child_processes.push_back(pid);
+		}
+				
 	}
 	
 	else if(!strcmp(tokens[0],"parallel")){
@@ -538,7 +709,7 @@ int execute_command(char** tokens){
 				struct stat statbuf;
 				stat(tokens[1], &statbuf);
 				if(S_ISDIR(statbuf.st_mode)){
-					cerr<<"Error: The file name corresponds to a directory"<<endl;
+					perror("The file name corresponds to a directory");
 					exit(-1);
 				}
 				
@@ -561,7 +732,7 @@ int execute_command(char** tokens){
 					fclose(file);
 				}
 				else{
-					cerr<<"Error: Could not open the file (or) file does not exist"<<endl;
+					perror("Could not open the file (or) file does not exist");
 					exit(-1);
 				}
 				exit (0) ;
@@ -597,11 +768,16 @@ void false_quit(int signum){
 
 /* Function for Signal Handling in main for SIGHUP */
 void main_quit(){
-	cout<<endl;
-	for (int i = 0; i < backgroud_child_processes.size(); ++i)
+	for (int i = 0; i < (int)backgroud_child_processes.size(); ++i)
 	{
 		cout<<" Killed : "<<backgroud_child_processes[i]<<endl;
 		killpg(backgroud_child_processes[i],SIGTERM);
+
+		vector<int>::iterator it = find(backgroud_child_processes.begin(), backgroud_child_processes.end(), backgroud_child_processes[i]);
+			
+		if(it != backgroud_child_processes.end()){
+			backgroud_child_processes.erase(it);
+		}
 	}
 	exit(0);
 }
