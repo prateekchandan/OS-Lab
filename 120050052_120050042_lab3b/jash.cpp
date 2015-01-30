@@ -168,6 +168,20 @@ bool is_piped(char **tokens, char **temp1, char **temp2){
 	return true;
 }
 
+bool is_backgroud(char **tokens){
+
+	int i=0;
+	while(tokens[i]!=NULL){
+		if(!strcmp(tokens[i],"&") && tokens[i+1] == NULL){
+			free(tokens[i]);
+			tokens[i]=NULL;
+			return true;
+		}
+		i++;
+	}
+	return false;
+}
+
 /* Function for taking a particular command and executing it */
 int execute_command(char** tokens){
 	/* 
@@ -188,6 +202,32 @@ int execute_command(char** tokens){
 	else if(tokens[0] == NULL){
 		// Empty Command
 		return 0 ;					
+	}
+
+	else if(is_backgroud(tokens)){
+		int pid=fork();
+
+		if(pid==-1){
+			perror("Failed to create background process");
+			return -1;
+		}
+		else if(pid==0){
+			// To define signal handler
+			//setpgid(0,0);
+			int ret_status=execute_command(tokens);
+			cout<<"\b\bCommand : ";
+			int i=0;
+			while(tokens[i]!=NULL)
+				cout<<tokens[i++]<<" ";
+
+			cout<<"\nPID : "<<getpid()<<endl;
+			if(ret_status == 0)
+				cout<<"Status : Successful ";
+			else
+				cout<<"Status : Failed ";
+			cout<<"\n$ ";
+			exit(0);
+		}
 	}
 	
 	else if(!strcmp(tokens[0],"parallel")){
