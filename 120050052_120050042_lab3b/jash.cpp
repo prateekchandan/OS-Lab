@@ -146,11 +146,11 @@ bool is_piped(char **tokens, char **temp1, char **temp2){
 	
 	int i=0;	
 	// Collect the tokens of commands one after another
-	while(tokens[i]!=NULL && !strcmp(tokens[0],"|")){
+	while(tokens[i]!=NULL && strcmp(tokens[i],"|")){
 		temp1[i] = tokens[i];
 		i++;
 	}
-	temp1[i+1] = NULL;
+	temp1[i] = NULL;
 	
 	if(tokens[i]==NULL){
 		return false;
@@ -163,7 +163,7 @@ bool is_piped(char **tokens, char **temp1, char **temp2){
 		i++;
 		j++;
 	}
-	temp2[j+1] = NULL;
+	temp2[j] = NULL;
 	return true;
 }
 
@@ -187,35 +187,6 @@ int execute_command(char** tokens){
 	else if(tokens[0] == NULL){
 		// Empty Command
 		return 0 ;					
-	}
-	
-	else if(!strcmp(tokens[0],"exit")){
-		/* Quit the running process */
-		exit(0);
-	}
-	
-	else if(!strcmp(tokens[0],"cd")){
-		/* Change Directory, or print error on failure */
-		char *path = tokens[1];
-		if(tokens[1]==NULL || !strcmp(tokens[1],"~")){
-			path = getpwuid(getuid())->pw_dir;
-		}
-		int err = chdir(path);
-		if(err == -1){
-			// Cases of directory access error
-			perror("Error in cd ");
-			return -1;
-		}
-		else{ 
-			// directory opened successfully
-			char *curr_dir = get_current_dir_name();
-			if(DEBUG){
-				cout<<"Current Directory changed to: "<<curr_dir<<endl;
-				fflush(stdout);
-			}
-			free(curr_dir);
-		}
-		return 0 ;
 	}
 	
 	else if(!strcmp(tokens[0],"parallel")){
@@ -328,6 +299,44 @@ int execute_command(char** tokens){
 	else if(is_piped(tokens,temp1,temp2)){
 		
 		/* Implementation of piped command */
+		int pfds[2];
+		pipe(pfds);
+		int pid = fork();
+		
+		if(pid == -1){
+			// Fork Failed
+			perror("Pipe: Forking failed in piped command");
+			return -1;
+		}
+		else if(pid == 0){
+			/* In child process */
+			close(1);       /* close normal stdout */
+			dup(pfds[1]);   /* make stdout same as pfds[1] */
+			close(pfds[0]);
+			//dup2(pfds[1],1);   /* make stdout same as pfds[1] */
+			//close(pfds[0]);
+			execute_command(temp1);
+			
+			close(0);       /* close normal stdin */
+			dup(pfds[0]);   /* make stdin same as pfds[0] */
+			close(pfds[1]);
+			dup(1);
+			//dup2(pfds[0],0);   /* make stdin same as pfds[0] */
+			//close(pfds[1]);
+			execute_command(temp2);
+			
+			exit(0);
+		}
+		else{
+			/* In parent process */
+			/* Wait for child process to complete & obtain status*/
+			int status;
+			while(waitpid(pid, &status, WNOHANG) != pid);
+			if(status==0) return 0;
+			else return -1;
+		}
+		
+		/*
 		int i=0;
 		while(temp1[i]!=NULL){
 			cout<<temp1[i]<<endl;
@@ -338,7 +347,37 @@ int execute_command(char** tokens){
 			cout<<temp2[i]<<endl;
 			i++;
 		}
+		*/
 		return 0;
+	}
+		
+	else if(!strcmp(tokens[0],"exit")){
+		/* Quit the running process */
+		exit(0);
+	}
+	
+	else if(!strcmp(tokens[0],"cd")){
+		/* Change Directory, or print error on failure */
+		char *path = tokens[1];
+		if(tokens[1]==NULL || !strcmp(tokens[1],"~")){
+			path = getpwuid(getuid())->pw_dir;
+		}
+		int err = chdir(path);
+		if(err == -1){
+			// Cases of directory access error
+			perror("Error in cd ");
+			return -1;
+		}
+		else{ 
+			// directory opened successfully
+			char *curr_dir = get_current_dir_name();
+			if(DEBUG){
+				cout<<"Current Directory changed to: "<<curr_dir<<endl;
+				fflush(stdout);
+			}
+			free(curr_dir);
+		}
+		return 0 ;
 	}
 	
 	else{
