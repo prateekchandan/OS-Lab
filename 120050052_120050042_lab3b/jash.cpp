@@ -312,18 +312,17 @@ int execute_command(char** tokens){
 			return -1;
 		}
 		else if(pid == 0){
-			close(1);       /* close normal stdout */
-			dup(pfds[1]);   /* make stdout same as pfds[1] */
+			dup2(pfds[1],fileno(stdout));  /* make stdout same as pfds[1] */
+			close(pfds[1]);
 			close(pfds[0]);
-			exit(execute_command(temp1));
+			execute_command(temp1);
+			exit(0);
 		}
 		else{
 			/* In parent process */
 			/* Wait for child process to complete & obtain status*/
 			int status;
-			while(waitpid(pid, &status, WNOHANG) != pid);
-			if(status!=0) return -1;
-
+			waitpid(pid, &status, 0);
 			int pid1 = fork();
 		
 			if(pid1 == -1){
@@ -332,20 +331,19 @@ int execute_command(char** tokens){
 				return -1;
 			}
 			else if(pid1 == 0){
-				close(0);       /* close normal stdin */
-				dup(pfds[0]);   /* make stdin same as pfds[0] */
-				close(pfds[1]);
-				exit(execute_command(temp2));
+				dup2(pfds[0],fileno(stdin));   /* make stdin same as pfds[0] */
+				close(pfds[0]);
+				execute_command(temp2);
+				exit(0);
 			}
 			else{
 				/* In parent process */
 				/* Wait for child process to complete & obtain status*/
-				
-				while(waitpid(pid1, &status, WNOHANG) != pid1);
-				if(status==0) return 0;
+				int status2;
+				waitpid(pid1, &status2, 0);
+				if(status2==0) return 0;
 				else return -1;
 			}
-			
 		}
 
 		return 0;

@@ -1,3 +1,4 @@
 test*
 *.tar.gz
 */a.out
+out
