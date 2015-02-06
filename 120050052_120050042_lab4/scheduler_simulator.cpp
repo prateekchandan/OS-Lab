@@ -128,13 +128,24 @@ void push_into_ready(int pid,int mode = 0){
 	else
 		pp->cpu_left -= (next.end_t - p->started_time); 
 
-	/*if(pp->cpu_left < 0)
-		cout<<"DEAD madarchod \n";*/
 	p->ready_state_time = next.end_t;
 	pp->mode = 0;
 	ready_processes.push(p);
 }
 
+int get_time_slice(int &pid){
+	int time_slice;
+	process *p = p_map[pid];
+	process_phase *pp = &(p->phases[p->curr_phase]);
+	if(inv_priority.find(p->start_priority) == inv_priority.end()){
+		time_slice = INT_MAX;
+	}
+	else{
+		scheduling_level s = Scheduler.levels_arr[inv_priority[p->start_priority]];
+		time_slice = s.time_slice;
+	}
+	return time_slice;
+}
 // Starts a process i.e. Starting CPU burst
 void start_process(int pid){
 	process *p = p_map[pid];
@@ -149,7 +160,6 @@ void start_process(int pid){
 	int time_slice;
 	if(inv_priority.find(p->start_priority) == inv_priority.end()){
 		time_slice = INT_MAX;
-		//cout<<p->start_priority<<"  &&\n";
 	}
 	else{
 		scheduling_level s = Scheduler.levels_arr[inv_priority[p->start_priority]];
@@ -240,11 +250,13 @@ int main()
 		}
 		// End of timeslice case
 		else if(next.type == "End of time-slice"){
+			process *p = p_map[curr_pid];
+			if(curr_pid != next.pid) continue;
+			if(next.end_t - (p->started_time) < get_time_slice(curr_pid)) continue;
 			if(cpu_free && debug)
 				cout<<"ERROR : CPU IS FREE AT THE END OF TIME SLICE\n";
 			cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Time slice ended\n";
 			demote(next.pid);
-			process *p = p_map[curr_pid];
 			/*if(p->started_time + p->phases[p->curr_phase].cpu_left == next.end_t){
 				cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: IO started fart\n";
 				cpu_free = true;

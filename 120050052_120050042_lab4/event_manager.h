@@ -74,7 +74,6 @@ public:
  		/*if(p1.end_t>p2.end_t) return true;
  		if(p1.end_t<p2.end_t) return false;
  		if(p_map.find(p1.pid)==p_map.end() || p_map.find(p2.pid)==p_map.end()){
-			cout<<p1.pid<<" "<<p2.pid<<"  DEAD ERROR"<<endl;
 			return false;
 		}
  		return p_map[p1.pid]->start_priority < p_map[p2.pid]->start_priority;*/
