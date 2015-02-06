@@ -45,7 +45,6 @@ struct process {
 	int ready_state_time;	// Time when entered into ready state queue
 	
 	// This variable is held for maintaining process state
-	int state; 			// 0 = ready, 1 = running, 2 = blocked, 3 = terminated
 	int curr_phase;
 	
 	process(){

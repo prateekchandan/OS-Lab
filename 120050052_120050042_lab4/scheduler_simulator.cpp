@@ -5,7 +5,7 @@
 #include <climits>
 using namespace std;
 
-int debug=1;
+int debug=0;
 
 void handling_PROCESS_SPEC_file(){
 	string line, line2;
@@ -121,7 +121,7 @@ event next;
 
 // Insert a process into ready state queue
 void push_into_ready(int pid,int mode = 0){
-	process *p = p_list[pid];
+	process *p = p_map[pid];
 	process_phase *pp = &(p->phases[p->curr_phase]);
 	if(mode == 1)
 		pp->cpu_left = pp->cpu_b;
@@ -130,12 +130,12 @@ void push_into_ready(int pid,int mode = 0){
 
 	p->ready_state_time = next.end_t;
 	pp->mode = 0;
-	ready_processes.push_back(p);
+	ready_processes.push(p);
 }
 
 // Starts a process i.e. Starting CPU burst
 void start_process(int pid){
-	process *p = p_list[pid];
+	process *p = p_map[pid];
 	process_phase *pp = &(p->phases[p->curr_phase]);
 	
 	curr_pid = pid;			// Chnaged current running pid
@@ -145,12 +145,18 @@ void start_process(int pid){
 	cpu_free =false;
 
 	int time_slice;
-	if(inv_priority.find(p->start_priority) == inv_priority.end())
+	if(inv_priority.find(p->start_priority) == inv_priority.end()){
 		time_slice = INT_MAX;
+		//cout<<p->start_priority<<"  &&\n";
+	}
 	else{
 		scheduling_level s = Scheduler.levels_arr[inv_priority[p->start_priority]];
 		time_slice = s.time_slice;
 	}
+	
+	if(debug)
+		cout<<pid<<" : "<<pp->cpu_left<<"  $$ \n";
+
 	if(time_slice < pp->cpu_left)
 		em.add_event(next.end_t + time_slice,2,pid);
 	else
@@ -161,7 +167,7 @@ void start_process(int pid){
 
 // Promotes or demotes a process
 void promote_demote(const int &pid , int mode){
-	process *p = p_list[pid];
+	process *p = p_map[pid];
 	process_phase *pp = &(p->phases[p->curr_phase]);
 	
 	if(inv_priority.find(p->start_priority) == inv_priority.end()){
@@ -171,18 +177,20 @@ void promote_demote(const int &pid , int mode){
 	}
 
 	int index=inv_priority[p->start_priority];
+	//cout<<"Pid : "<<pid<<" , index : "<<p->start_priority<<endl;;
 	if(mode == 0)
-		index--;
-	else
 		index++;
+	else
+		index--;
 	if(index==-1 || index == Scheduler.no_of_levels)
 		return ;
+	//cout<<Scheduler.no_of_levels<< " : "<<index<<endl;
 
 	p->start_priority = Scheduler.levels_arr[index].priority;
 	if(mode==0)
-		cout<<"PID :: "<<pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Priority demoted to level "<<p->start_priority<<"\n";
+		cout<<"PID :: "<<pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Priority promoted to level "<<p->start_priority<<"\n";
 	else
-		cout<<"PID :: "<<pid<<"  TIME :: "<<next.end_t<<" EVENT :: Priority promoted to level "<<p->start_priority<<"\n";
+		cout<<"PID :: "<<pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Priority demoted to level "<<p->start_priority<<"\n";
 }
 
 void promote(const int &pid){promote_demote(pid,0);}
@@ -190,12 +198,12 @@ void demote(const int &pid){promote_demote(pid,1);}
 
 // TO check if a process is terminated
 bool check_terminate(const int &pid){
-	process *p = p_list[pid];
+	process *p = p_map[pid];
 	process_phase *pp = &(p->phases[p->curr_phase]);
 	pp->mode=0;
-	pp->cur_itr++;
+	pp->curr_itr++;
 
-	if(pp->cur_itr == itrs){
+	if(pp->curr_itr == pp->itrs){
 		p->curr_phase++;
 		if(p->curr_phase==p->phases.size()){
 			cout<<"PID :: "<<pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Process terminated\n";
@@ -216,6 +224,7 @@ int main()
 
 		// Process Admission case
 		if(next.type == "Process admission"){
+			cout<<"PID :: "<<next.pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Process Admitted\n";
 			push_into_ready(next.pid,1);
 			process *p = ready_processes.top();
 			if(cpu_free){
@@ -233,27 +242,49 @@ int main()
 		else if(next.type == "End of time-slice"){
 			if(cpu_free && debug)
 				cout<<"ERROR : CPU IS FREE AT THE END OF TIME SLICE\n";
+			cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Time slice ended\n";
 			demote(next.pid);
 			push_into_ready(next.pid,0);
-			cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Process pre-empted\n";
-			
 			process *p = ready_processes.top();
 			ready_processes.pop();
-			start_process(p->pid);
-			
-			cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Process pre-empted\n";
-
+			start_process(p->pid);			
 		}
 		// IO start case or end of CPU Burst
 		else if(next.type == "IO start"){
-
+			process *p = p_map[curr_pid];
+			if(curr_pid != next.pid) continue;
+			if(next.end_t - (p->started_time) < p->phases[p->curr_phase].cpu_left) continue;
+			cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: CPU burst completed\n";
+			cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: IO started\n";
+			promote(curr_pid);
+			em.add_event(next.end_t + p->phases[p->curr_phase].io_b , 4 , curr_pid);
+			cpu_free = true;
+			if(!ready_processes.empty()){
+				p = ready_processes.top();
+				ready_processes.pop();
+				start_process(p->pid);
+			}
 		}
 		// IO end Case
 		else if(next.type == "IO end"){
-
+			cout<<"PID :: "<<next.pid<<"  TIME :: "<<next.end_t<<"  EVENT :: IO burst completed\n";
+			bool status = check_terminate(next.pid);
+			if(!status){
+				push_into_ready(next.pid , 1);
+				process *p = ready_processes.top();
+				if(cpu_free){
+					ready_processes.pop();
+					start_process(p->pid);
+				}
+				else if(p_map[curr_pid]->start_priority < p->start_priority){
+					cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Process pre-empted\n";
+					push_into_ready(curr_pid,0);
+					ready_processes.pop();
+					start_process(p->pid);
+				}
+			}
 		}
 	}
 	
 	return 0;
-		}
 }
