@@ -5,7 +5,7 @@
 using namespace std;
 
 struct event{
-	int end_t;	//event occurrence time 
+	int end_t;		//event occurrence time 
 	string type;	//event type
 	int pid;		//process id
 };
@@ -27,7 +27,23 @@ class event_mgnr {
 	{
 		event ev;
 		ev.end_t = end_t;
-		ev.type = type;
+		switch (type) {
+			case 1:
+				ev.type = "Process admission";
+				break;
+			case 2:
+				ev.type = "End of time-slice";
+				break;
+			case 3:
+				ev.type = "IO start";
+				break;
+			case 4:
+				ev.type = "IO end";
+				break;
+			default:
+				break;
+		}
+		
 		ev.pid = pid;
 		event_table.push(ev);
 	}
@@ -47,3 +63,5 @@ class event_mgnr {
 	}
 
 };
+
+

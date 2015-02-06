@@ -2,6 +2,7 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+#include <map>
 #include "event_manager.h"
 
 using namespace std;
@@ -23,6 +24,15 @@ struct process_phase {
 	int itrs;	//number of iterations
 	int cpu_b;	//cpu burst time
 	int io_b;	//IO burst time
+	
+	// These variables are for maintaining state of a process phase
+	int curr_itr;
+	int mode;
+	
+	process_phase(){
+		curr_itr = 0;
+		mode = 0; // 0 = CPU burst, 1 = IO burst
+	}
 };
 
 struct process {
@@ -30,10 +40,20 @@ struct process {
 	int start_priority;
 	int admission;
 	vector<process_phase> phases;
+	
+	// This variable is held for maintaining process state
+	int state; // 0 = ready, 1 = running, 2 = blocked, 3 = terminated
+	int curr_phase;
+	
+	process(){
+		curr_phase = 0;
+	}
+	
 };
 
 scheduler Scheduler;
 vector<process> p_list;
+map<int,process*> p_map;
 
 void handling_PROCESS_SPEC_file(){
 	string line, line2;
@@ -70,6 +90,10 @@ void handling_PROCESS_SPEC_file(){
 			em.add_event(proc.admission,1,proc.pid);	//event type "1" represents "process admission event"
 
 		}
+	}
+	
+	for(int i = 0; i<p_list.size(); i++){
+		p_map[p_list[i].pid] = &p_list[i];
 	}
 }
 
@@ -119,21 +143,88 @@ void handling_SCHEDULER_SPEC_file(){
 	}
 }
 
+class comp2{
+public:
+ 	int operator() ( const process *p1, const process *p2)
+ 	{
+ 		return p1->start_priority< p2->start_priority;
+ 	}
+};
+
 int main()
 {
 	
 	handling_PROCESS_SPEC_file();
 	handling_SCHEDULER_SPEC_file();
+	priority_queue<process*, vector<process*>, comp2> ready_processes;
 	//processing events
 	event next;
-	next = em.next_event();
-	switch(next.type)
-	{	
-		//routine for handling process admission event
-		case 1:
-			break;
-		//Define routines for other required events here.
-
+	
+	bool cpu_free = true;
+	int curr_pid = -1;
+	process *it;
+	
+	while(!em.is_empty()){
+			next = em.next_event();
+			//routine for handling process admission event
+			if(next.type=="Process admission"){
+				cout<<"PID :: "<< next.pid<<" TIME :: "<<next.end_t<<" EVENT :: Process Admitted\n";
+				ready_processes.push(p_map[next.pid]);
+				if(cpu_free){
+					process *p;
+					p = ready_processes.top();
+					ready_processes.pop();
+					cout<<"PID :: "<< p->pid<<" TIME :: "<<next.end_t<<" EVENT :: Process dispatched\n";
+					p->phases[p->curr_phase].mode = 0;
+					em.add_event(next.end_t+p->phases[p->curr_phase].cpu_b,3,p->pid);
+					cpu_free = false;
+				}
+			}
+			//routine for handling IO start or CPU end event
+			else if(next.type=="IO start"){
+				cout<<"PID :: "<< next.pid<<" TIME :: "<<next.end_t<<" EVENT :: CPU burst completed\n";
+				cout<<"PID :: "<< next.pid<<" TIME :: "<<next.end_t<<" EVENT :: IO started\n";
+				cpu_free = true;
+				process *p = p_map[next.pid];
+				process_phase *pp = &(p->phases[p->curr_phase]);
+				em.add_event(next.end_t+pp->io_b,4,next.pid);
+				if(!ready_processes.empty()){
+					p = ready_processes.top();
+					ready_processes.pop();
+					cout<<"PID :: "<< p->pid<<" TIME :: "<<next.end_t<<" EVENT :: Process dispatched\n";
+					cpu_free = false;
+					p->phases[p->curr_phase].mode = 0;
+					em.add_event(next.end_t+p->phases[p->curr_phase].cpu_b,3,p->pid);
+				}
+			}
+			//routine for handling IO end event
+			else if(next.type=="IO end"){
+				cout<<"PID :: "<< next.pid<<" TIME :: "<<next.end_t<<" EVENT :: IO ended\n";
+				process *p = p_map[next.pid];
+				process_phase *pp = &(p->phases[p->curr_phase]);
+				bool process_finished = false;
+				pp->curr_itr++;
+				pp->mode = 0;
+				if(pp->curr_itr==pp->itrs){
+					pp->curr_itr = 0;
+					p->curr_phase++;
+					if(p->curr_phase==p->phases.size()){
+						cout<<"PID :: "<< next.pid<<" TIME :: "<<next.end_t<<" EVENT :: Process finished\n";
+						process_finished = true;
+					}
+				}
+				if(!process_finished){
+					ready_processes.push(p_map[next.pid]);
+					if(cpu_free){
+						p = ready_processes.top();
+						ready_processes.pop();
+						cout<<"PID :: "<< p->pid<<" TIME :: "<<next.end_t<<" EVENT :: Process dispatched\n";
+						cpu_free = false;
+						p->phases[p->curr_phase].mode = 0;
+						em.add_event(next.end_t+p->phases[p->curr_phase].cpu_b,3,p->pid);
+					}	
+				}
+			}
 	}
 	
 	return 0;
