@@ -18,6 +18,7 @@ struct scheduler {
 	vector<scheduling_level> levels_arr;
 };
 
+
 struct process_phase {
 	int itrs;	//number of iterations
 	int cpu_b;	//cpu burst time
@@ -25,9 +26,8 @@ struct process_phase {
 	
 	// These variables are for maintaining state of a process phase
 	int curr_itr;
-	int mode;
-	int cpu_left;
-	int started_time;
+	int mode;		
+	int cpu_left;		// Time left to complete CPU Burts
 	
 	process_phase(){
 		curr_itr = 0;
@@ -41,8 +41,11 @@ struct process {
 	int admission;
 	vector<process_phase> phases;
 	
+	int started_time;	// Time when the event is started
+	int ready_state_time;	// Time when entered into ready state queue
+	
 	// This variable is held for maintaining process state
-	int state; // 0 = ready, 1 = running, 2 = blocked, 3 = terminated
+	int state; 			// 0 = ready, 1 = running, 2 = blocked, 3 = terminated
 	int curr_phase;
 	
 	process(){
@@ -51,6 +54,7 @@ struct process {
 	
 };
 
+map<int,int> inv_priority;
 scheduler Scheduler;
 vector<process> p_list;
 map<int,process*> p_map;
@@ -67,13 +71,14 @@ class comp{
 public:
  	int operator() ( const event& p1, const event &p2)
  	{
- 		if(p1.end_t>p2.end_t) return true;
+ 		return p1.end_t > p2.end_t;
+ 		/*if(p1.end_t>p2.end_t) return true;
  		if(p1.end_t<p2.end_t) return false;
  		if(p_map.find(p1.pid)==p_map.end() || p_map.find(p2.pid)==p_map.end()){
-			cout<<p1.pid<<" "<<p2.pid<<endl;
+			cout<<p1.pid<<" "<<p2.pid<<"  DEAD ERROR"<<endl;
 			return false;
 		}
- 		return p_map[p1.pid]->start_priority < p_map[p2.pid]->start_priority;
+ 		return p_map[p1.pid]->start_priority < p_map[p2.pid]->start_priority;*/
  	}
 };
 
@@ -98,9 +103,6 @@ class event_mgnr {
 				break;
 			case 4:
 				ev.type = "IO end";
-				break;
-			case 5:
-				ev.type = "Process pre-empted";
 				break;
 			default:
 				break;
