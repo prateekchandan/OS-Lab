@@ -128,6 +128,8 @@ void push_into_ready(int pid,int mode = 0){
 	else
 		pp->cpu_left -= (next.end_t - p->started_time); 
 
+	/*if(pp->cpu_left < 0)
+		cout<<"DEAD madarchod \n";*/
 	p->ready_state_time = next.end_t;
 	pp->mode = 0;
 	ready_processes.push(p);
@@ -157,7 +159,7 @@ void start_process(int pid){
 	if(debug)
 		cout<<pid<<" : "<<pp->cpu_left<<"  $$ \n";
 
-	if(time_slice < pp->cpu_left)
+	if(time_slice <= pp->cpu_left)
 		em.add_event(next.end_t + time_slice,2,pid);
 	else
 		em.add_event(next.end_t + pp->cpu_left,3,pid);
@@ -177,14 +179,12 @@ void promote_demote(const int &pid , int mode){
 	}
 
 	int index=inv_priority[p->start_priority];
-	//cout<<"Pid : "<<pid<<" , index : "<<p->start_priority<<endl;;
 	if(mode == 0)
 		index++;
 	else
 		index--;
 	if(index==-1 || index == Scheduler.no_of_levels)
 		return ;
-	//cout<<Scheduler.no_of_levels<< " : "<<index<<endl;
 
 	p->start_priority = Scheduler.levels_arr[index].priority;
 	if(mode==0)
@@ -244,8 +244,15 @@ int main()
 				cout<<"ERROR : CPU IS FREE AT THE END OF TIME SLICE\n";
 			cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: Time slice ended\n";
 			demote(next.pid);
-			push_into_ready(next.pid,0);
-			process *p = ready_processes.top();
+			process *p = p_map[curr_pid];
+			/*if(p->started_time + p->phases[p->curr_phase].cpu_left == next.end_t){
+				cout<<"PID :: "<<curr_pid<<"  TIME :: "<<next.end_t<<"  EVENT :: IO started fart\n";
+				cpu_free = true;
+				em.add_event(next.end_t + p->phases[p->curr_phase].io_b , 4 , curr_pid);
+			}
+			else*/
+				push_into_ready(next.pid,0);
+			p = ready_processes.top();
 			ready_processes.pop();
 			start_process(p->pid);			
 		}
