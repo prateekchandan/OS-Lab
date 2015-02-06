@@ -1,59 +1,9 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include <string>
-#include <map>
 #include "event_manager.h"
 
 using namespace std;
-
-event_mgnr em;
-
-struct scheduling_level {
-	int level_no;
-	int priority;
-	int time_slice;	//either some integer or N
-};
-
-struct scheduler {
-	int no_of_levels;
-	vector<scheduling_level> levels_arr;
-};
-
-struct process_phase {
-	int itrs;	//number of iterations
-	int cpu_b;	//cpu burst time
-	int io_b;	//IO burst time
-	
-	// These variables are for maintaining state of a process phase
-	int curr_itr;
-	int mode;
-	
-	process_phase(){
-		curr_itr = 0;
-		mode = 0; // 0 = CPU burst, 1 = IO burst
-	}
-};
-
-struct process {
-	int pid;
-	int start_priority;
-	int admission;
-	vector<process_phase> phases;
-	
-	// This variable is held for maintaining process state
-	int state; // 0 = ready, 1 = running, 2 = blocked, 3 = terminated
-	int curr_phase;
-	
-	process(){
-		curr_phase = 0;
-	}
-	
-};
-
-scheduler Scheduler;
-vector<process> p_list;
-map<int,process*> p_map;
 
 void handling_PROCESS_SPEC_file(){
 	string line, line2;
@@ -82,6 +32,7 @@ void handling_PROCESS_SPEC_file(){
 			    
 				pp.itrs = iter;
 			    	pp.cpu_b = cpu_t;
+			    	pp.cpu_left = cpu_t;
 			    	pp.io_b = io_t;
 			    	(proc.phases).push_back(pp);
 			    	getline(infile, line2);
@@ -151,13 +102,34 @@ public:
  	}
 };
 
+void push_into_ready(int pid, int time_now){
+	process *p = p_map[pid];
+	p->phases[p->curr_phase].mode = 0;
+	p->phases[curr_phase].cpu_left = cpu_b;
+	p->phases[curr_phase].started_time = time_now;
+	ready_processes.push(p_map[pid]);
+}
+
+process* get_top_process(){
+	process *p = ready_processes.top();
+	ready_processes.pop();
+	return p;
+}
+
+void set_mode(process *p, int mode){
+	p->phases[p->curr_phase].mode = 0;
+}
+
+void set_started_time(process *p, int start_time){
+	p->phases[p->curr_phase].started_time = start_time;
+}
+
 int main()
 {
 	
 	handling_PROCESS_SPEC_file();
 	handling_SCHEDULER_SPEC_file();
 	priority_queue<process*, vector<process*>, comp2> ready_processes;
-	//processing events
 	event next;
 	
 	bool cpu_free = true;
@@ -166,19 +138,41 @@ int main()
 	
 	while(!em.is_empty()){
 			next = em.next_event();
+			
 			//routine for handling process admission event
 			if(next.type=="Process admission"){
 				cout<<"PID :: "<< next.pid<<" TIME :: "<<next.end_t<<" EVENT :: Process Admitted\n";
-				ready_processes.push(p_map[next.pid]);
+				push_into_ready(next.pid, next.end_t);
+				
 				if(cpu_free){
-					process *p;
-					p = ready_processes.top();
-					ready_processes.pop();
-					cout<<"PID :: "<< p->pid<<" TIME :: "<<next.end_t<<" EVENT :: Process dispatched\n";
-					p->phases[p->curr_phase].mode = 0;
-					em.add_event(next.end_t+p->phases[p->curr_phase].cpu_b,3,p->pid);
+					
+					// CPU is free, so dispatch a process
+					process *p = get_top_process();
+					cout<<"PID :: "<< p->pid << " TIME :: " << next.end_t << " EVENT :: Process dispatched\n";
+					curr_pid = p->pid;
 					cpu_free = false;
+					set_mode(p,0);
+					set_started_time(p,next.end_t);
+					
+					
+					em.add_event(next.end_t+p->phases[p->curr_phase].cpu_left,3,p->pid);
 				}
+				else{
+					// other process is running
+					if(p_map[curr_pid]->start_priority < p_map[next.pid]->priority){
+						cout<<"PID :: "<<curr_pid<<" TIME :: "<<next.end_t<<" EVENT :: Process preempted\n";
+						it = p_map[curr_pid];
+						it->phases[it->curr_phase].cpu_left = it->phases[it->curr_phase].cpu_b - (next.end_t - it->phases[it->curr_phase].started_time);
+						ready_processes.push(p_map[curr_pid]);
+						
+						process *p = p_map[next.pid];
+						cout<<"PID :: "<< p->pid<<" TIME :: "<<next.end_t<<" EVENT :: Process dispatched\n";
+						curr_pid = p->pid;
+						p->phases[p->curr_phase].mode = 0;
+						p->phases[p->curr_phase].started_time = next.end_t;
+						em.add_event(next.end_t+p->phases[p->curr_phase].cpu_left,3,p->pid);
+						cpu_free = false;
+					}
 			}
 			//routine for handling IO start or CPU end event
 			else if(next.type=="IO start"){
@@ -193,7 +187,9 @@ int main()
 					ready_processes.pop();
 					cout<<"PID :: "<< p->pid<<" TIME :: "<<next.end_t<<" EVENT :: Process dispatched\n";
 					cpu_free = false;
+					curr_pid = p->pid;
 					p->phases[p->curr_phase].mode = 0;
+					p->phases[p->curr_phase].started_time = next.end_t;
 					em.add_event(next.end_t+p->phases[p->curr_phase].cpu_b,3,p->pid);
 				}
 			}
@@ -219,6 +215,7 @@ int main()
 						p = ready_processes.top();
 						ready_processes.pop();
 						cout<<"PID :: "<< p->pid<<" TIME :: "<<next.end_t<<" EVENT :: Process dispatched\n";
+						curr->pid = p->pid;
 						cpu_free = false;
 						p->phases[p->curr_phase].mode = 0;
 						em.add_event(next.end_t+p->phases[p->curr_phase].cpu_b,3,p->pid);
